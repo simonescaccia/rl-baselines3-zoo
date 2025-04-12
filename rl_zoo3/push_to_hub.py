@@ -7,6 +7,8 @@ from copy import deepcopy
 from pathlib import Path
 from pprint import pformat
 from typing import Any, Optional
+import tempfile
+import numpy as np
 
 import torch as th
 import yaml
@@ -16,7 +18,7 @@ from huggingface_sb3 import EnvironmentName, ModelName, ModelRepoId
 from huggingface_sb3.push_to_hub import _evaluate_agent, generate_metadata
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.utils import set_random_seed
-from stable_baselines3.common.vec_env import VecEnv, unwrap_vec_normalize
+from stable_baselines3.common.vec_env import VecEnv, unwrap_vec_normalize, VecVideoRecorder
 from wasabi import Printer
 
 import rl_zoo3.import_envs  # noqa: F401 pylint: disable=unused-import
