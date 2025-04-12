@@ -13,7 +13,7 @@ import yaml
 from huggingface_hub import HfApi
 from huggingface_hub.repocard import metadata_save
 from huggingface_sb3 import EnvironmentName, ModelName, ModelRepoId
-from fix_huggingface_sb3.push_to_hub import _evaluate_agent, _generate_replay, generate_metadata
+from ..fix_huggingface_sb3.push_to_hub import _evaluate_agent, _generate_replay, generate_metadata
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import VecEnv, unwrap_vec_normalize
