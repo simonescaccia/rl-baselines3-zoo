@@ -13,7 +13,7 @@ import yaml
 from huggingface_hub import HfApi
 from huggingface_hub.repocard import metadata_save
 from huggingface_sb3 import EnvironmentName, ModelName, ModelRepoId
-from ..fix_huggingface_sb3.push_to_hub import _evaluate_agent, _generate_replay, generate_metadata
+from huggingface_sb3.push_to_hub import _evaluate_agent, generate_metadata
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.vec_env import VecEnv, unwrap_vec_normalize
@@ -123,6 +123,64 @@ python -m rl_zoo3.push_to_hub --algo {algo_name} --env {env_id} -f logs/ -orga {
 """
 
     return model_card, metadata
+
+def _generate_replay(
+    model: BaseAlgorithm,
+    eval_env: VecEnv,
+    video_length: int,
+    is_deterministic: bool,
+    local_path: Path,
+):
+    """
+    Generate a replay video of the agent
+    :param model: trained model
+    :param eval_env: environment used to evaluate the agent
+    :param video_length: length of the video (in timesteps)
+    :param is_deterministic: use deterministic or stochastic actions
+    :param local_path: path of the local repository
+    """
+    # This is another temporary directory for video outputs
+    # SB3 created a -step-0-to-... meta files as well as other
+    # artifacts which we don't want in the repo.
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # Step 1: Create the VecVideoRecorder
+        env = VecVideoRecorder(
+            eval_env,
+            tmpdirname,
+            record_video_trigger=lambda x: x == 0,
+            video_length=video_length,
+            name_prefix="",
+        )
+
+        obs = env.reset()
+        lstm_states = None
+        episode_starts = np.ones((env.num_envs,), dtype=bool)
+
+        try:
+            for _ in range(video_length):
+                action, lstm_states = model.predict(
+                    obs,
+                    state=lstm_states,
+                    episode_start=episode_starts,
+                    deterministic=is_deterministic,
+                )
+                obs, _, episode_starts, _ = env.step(action)
+
+            # Save the video
+            env.close()
+
+            # Convert the video with x264 codec
+            inp = env.video_path
+            out = os.path.join(local_path, "replay.mp4")
+            os.system(f"ffmpeg -y -i {inp} -vcodec h264 {out}".format(inp, out))
+
+        except KeyboardInterrupt:
+            pass
+        except Exception as e:
+            msg.fail(str(e))
+            # Add a message for video
+            msg.fail("We are unable to generate a replay of your agent, the package_to_hub process continues")
+            msg.fail("Please open an issue at https://github.com/huggingface/huggingface_sb3/issues")
 
 
 def package_to_hub(
